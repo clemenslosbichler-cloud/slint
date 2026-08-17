@@ -112,7 +112,8 @@ export component IncorrectPropertyVisibility {
     implement OutOnlyInterface <=> self;
 //            >               <error{Cannot implement 'OutOnlyInterface'.↵- 'count' must be 'out' (found 'in-out')}
 
-    in-out property <int> count;
+    // Intentionally use `in_out` to verify that keywords with underscores are correctly normalized.
+    in_out property <int> count;
 //  >    <note{'OutOnlyInterface' declares 'count' as 'out property <int> count;'}
 }
 

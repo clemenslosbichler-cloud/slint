@@ -251,12 +251,9 @@ enum DeclarationAnchor {
     /// The n-th parameter of a callback or function.
     Argument(usize),
     ReturnType,
-    Visibility,
+    Visibility(PropertyVisibility),
     Purity,
 }
-
-const VISIBILITY_KEYWORDS: &[&str] =
-    &["in", "out", "in-out", "in_out", "private", "public", "protected"];
 
 impl DeclarationAnchor {
     fn source_location(&self, declaration: &SyntaxNode) -> SourceLocation {
@@ -273,11 +270,13 @@ impl DeclarationAnchor {
             Self::PropertyType => declaration.child_node(SyntaxKind::Type)?,
             Self::Argument(index) => parameter_type(declaration, *index)?,
             Self::ReturnType => declaration.child_node(SyntaxKind::ReturnType)?,
-            Self::Visibility => {
-                return Some(keyword_token(declaration, VISIBILITY_KEYWORDS)?.to_source_location());
+            Self::Visibility(visibility) => {
+                return Some(
+                    keyword_token(declaration, &visibility.to_string())?.to_source_location(),
+                );
             }
             Self::Purity => {
-                return Some(keyword_token(declaration, &["pure"])?.to_source_location());
+                return Some(keyword_token(declaration, "pure")?.to_source_location());
             }
         };
         Some(node.to_source_location())
@@ -299,11 +298,11 @@ fn parameter_type(declaration: &SyntaxNode, index: usize) -> Option<SyntaxNode> 
 
 /// Visibility and purity are plain identifier tokens rather than syntax nodes, so they can only be
 /// located by their text - the inverse of how [`Element::from_node`] reads them.
-fn keyword_token(declaration: &SyntaxNode, keywords: &[&str]) -> Option<SyntaxToken> {
-    declaration
-        .children_with_tokens()
-        .filter_map(|child| child.into_token())
-        .find(|token| token.kind() == SyntaxKind::Identifier && keywords.contains(&token.text()))
+fn keyword_token(declaration: &SyntaxNode, keyword: &str) -> Option<SyntaxToken> {
+    declaration.children_with_tokens().filter_map(|child| child.into_token()).find(|token| {
+        token.kind() == SyntaxKind::Identifier
+            && parser::normalize_identifier(token.text()) == keyword
+    })
 }
 
 struct MemberViolation {
@@ -675,7 +674,7 @@ fn property_matches_interface(
                 interface_declaration.visibility, property.property_visibility
             ),
             note: declares_as_note(interface_name, name, interface_declaration),
-            anchor: DeclarationAnchor::Visibility,
+            anchor: DeclarationAnchor::Visibility(property.property_visibility),
         });
     }
 
