@@ -991,7 +991,7 @@ impl Display for Function {
         } else {
             format!(" -> {}", self.return_type)
         };
-        write!(formatter, "){}", return_type)
+        write!(formatter, "){return_type}")
     }
 }
 
