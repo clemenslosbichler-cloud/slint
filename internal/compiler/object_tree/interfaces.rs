@@ -297,10 +297,8 @@ fn validate_interface_member_implementation(
     }
 
     let mut conflicts = InterfaceMemberDiagnostics::from(conflicts);
-    let source = element
-        .property_declarations
-        .get(member_name)
-        .and_then(|declaration| declaration.node.clone());
+    let source =
+        element.declaration(member_name).and_then(|(_, declaration)| declaration.node.clone());
 
     if let Some(source) = source {
         conflicts.notes.push(NoteWithSource {
@@ -353,11 +351,18 @@ pub(super) fn apply_child_implement_statements(
             let mut prop_decl = prop_decl.clone();
             prop_decl.node = Some(node.QualifiedName().into());
 
-            if let Some(existing_property) =
-                element.borrow_mut().property_declarations.insert(name.clone(), prop_decl.clone())
-            {
-                let source = existing_property
-                    .node
+            // A shadowing declaration also occupies the name, though stored under a different one
+            let shadowing =
+                element.borrow().declaration(name).map(|(_, declaration)| declaration.node.clone());
+            let existing_node = shadowing.or_else(|| {
+                element
+                    .borrow_mut()
+                    .property_declarations
+                    .insert(name.clone(), prop_decl.clone())
+                    .map(|existing| existing.node.clone())
+            });
+            if let Some(existing_node) = existing_node {
+                let source = existing_node
                     .as_ref()
                     .and_then(|node| node.child_node(SyntaxKind::DeclaredIdentifier))
                     .and_then(|node| node.child_token(SyntaxKind::Identifier))
@@ -379,9 +384,7 @@ pub(super) fn apply_child_implement_statements(
                 }
                 _ => element.borrow_mut().set_binding(
                     name.clone(),
-                    BindingExpression::new_two_way(
-                        NamedReference::new(&child, name.clone()).into(),
-                    ),
+                    BindingExpression::new_two_way(member_reference(&child, name).into()),
                 ),
             };
             debug_assert!(
@@ -580,6 +583,14 @@ fn property_matches_interface(
     if errors.is_empty() { Ok(()) } else { Err(errors.join("\n")) }
 }
 
+/// A reference to the member of `elem` written as `name` in the source, which for a shadowing
+/// declaration is stored under a different internal name.
+fn member_reference(elem: &ElementRc, name: &SmolStr) -> NamedReference {
+    let internal_name =
+        elem.borrow().declaration(name).map_or_else(|| name.clone(), |(n, _)| n.clone());
+    NamedReference::new(elem, internal_name)
+}
+
 fn apply_uses_statement_function_binding(
     element: &ElementRc,
     child: &ElementRc,
@@ -594,7 +605,7 @@ fn apply_uses_statement_function_binding(
         .collect();
 
     let call_expr = Expression::FunctionCall {
-        function: Callable::Function(NamedReference::new(child, name.clone())),
+        function: Callable::Function(member_reference(child, name)),
         arguments: args_expr,
         source_location: None,
     };
