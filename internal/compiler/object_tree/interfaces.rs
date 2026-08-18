@@ -376,24 +376,12 @@ fn validate_interface_member_implementation(
         return None;
     };
 
-    let joined_errors =
-        |violations: &[MemberViolation]| violations.iter().map(|v| v.error.as_str()).join("\n");
+    let joined_errors = violations.iter().map(|v| v.error.as_str()).join("\n");
+    let mut conflicts = InterfaceMemberDiagnostics::from(joined_errors);
 
-    if !lookup_result.is_valid() {
-        return Some(InterfaceMemberDiagnostics::from(joined_errors(&violations)));
-    }
-
-    let base_conflict = (!lookup_result.is_local_to_component && child_id.is_none())
-        .then(|| check_property_declaration_conflicts(&lookup_result, &element.base_type).err())
-        .flatten();
-
-    let error = match base_conflict {
-        Some(error) => error,
-        None => joined_errors(&violations),
-    };
-
-    let mut conflicts = InterfaceMemberDiagnostics::from(error);
-    if let Some(source) = element.property_declaration_node(member_name) {
+    if lookup_result.is_valid()
+        && let Some(source) = element.property_declaration_node(member_name)
+    {
         conflicts.notes = violations
             .into_iter()
             .map(|violation| NoteWithSource {
