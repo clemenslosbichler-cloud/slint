@@ -1,0 +1,18 @@
+# Copyright © SixtyFPS GmbH <info@slint.dev>
+# SPDX-License-Identifier: MIT
+
+[env]
+ESP_LOG = "INFO"
+# The app's build.rs looks for the compiler next to the host build products,
+# which a cross build doesn't share. Point it at the shared target directory.
+SLINT_COMPILER = { value = "../../../target/debug/slint-compiler", relative = true }
+
+[target.xtensa-esp32s3-none-elf]
+runner = "espflash flash --monitor --flash-size 16mb"
+rustflags = ["-C", "link-arg=-Wl,-Tlinkall.x"]
+
+[build]
+target = "xtensa-esp32s3-none-elf"
+
+[unstable]
+build-std = ["core", "alloc"]

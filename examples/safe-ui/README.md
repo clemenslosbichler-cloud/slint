@@ -44,6 +44,8 @@ The UI and its logic are independent of the platform they run on:
   This is the safety-domain target.
 - [`ffi-simulator/`](./ffi-simulator) — implements the C system interface in Rust
   and drives `ffi`'s `slint_app_main()`, so the C path can be exercised on a development machine.
+- [`esp32-s3-box/`](./esp32-s3-box) — a bare-metal backend for the ESP32-S3-BOX-3,
+  on esp-hal and embassy, driving the board's panel and touch controller directly.
 
 ## Supported Pixel Formats
 
@@ -137,6 +139,17 @@ selecting the pixel format with a Cargo feature:
 
 ```
 cargo run --manifest-path examples/safe-ui/ffi-simulator/Cargo.toml --features pixel-bgra8888
+```
+
+## Running on an ESP32-S3-BOX-3
+
+The [`esp32-s3-box/`](./esp32-s3-box) backend runs the same UI bare metal on an
+[ESP32-S3-BOX-3](https://github.com/espressif/esp-box), with esp-hal and embassy in place of
+FreeRTOS and the C system interface. See [its README](./esp32-s3-box/README.md) for the
+toolchain it needs; with the board attached over USB-C:
+
+```
+cd examples/safe-ui/esp32-s3-box && cargo run --release
 ```
 
 ## Known Limitations
